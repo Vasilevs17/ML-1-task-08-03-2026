@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Data and downloads
+/data/raw/*
+!/data/raw/.gitkeep
+/data/interim/
+/data/processed/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.bz2
+*.xz
+*.7z
+/tmp_downloads/
+
+# ML outputs
+/models/*
+!/models/.gitkeep
+/logs/*
+!/logs/.gitkeep
+/artifacts/*
+!/artifacts/.gitkeep
+checkpoints/
+wandb/
+mlruns/
+
+# Logs
+*.log
+
+# OS/IDE
+.DS_Store
+.idea/
+.vscode/

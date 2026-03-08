@@ -1,0 +1,13 @@
+data:
+  raw_dir: data/raw
+  file: null
+  target_col: target
+
+train:
+  test_size: 0.2
+  random_state: 42
+
+outputs:
+  models_dir: models
+  logs_dir: logs
+  artifacts_dir: artifacts
