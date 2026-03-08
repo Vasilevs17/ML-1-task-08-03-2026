@@ -29,9 +29,10 @@ ensure_gdown() {
 }
 
 # Если данные уже распакованы, повторно не качаем
-if find data/raw -type f | grep -q .; then
-  echo "[INFO] Files already exist in data/raw, skipping download and extraction."
-  find data/raw -maxdepth 2 -type f | head -20
+# .gitkeep не считается реальным файлом данных
+if find data/raw -type f ! -name '.gitkeep' | grep -q .; then
+  echo "[INFO] Real data files already exist in data/raw, skipping download and extraction."
+  find data/raw -maxdepth 2 -type f ! -name '.gitkeep' | head -20
   exit 0
 fi
 
@@ -88,9 +89,9 @@ if not zipfile.is_zipfile(archive):
 with zipfile.ZipFile(archive, "r") as zf:
     zf.extractall(extract_dir)
 
-files = [p for p in extract_dir.rglob("*") if p.is_file()]
+files = [p for p in extract_dir.rglob("*") if p.is_file() and p.name != ".gitkeep"]
 if not files:
-    raise SystemExit("Extraction failed: no files found in data/raw")
+    raise SystemExit("Extraction failed: no real data files found in data/raw")
 
 print(f"[INFO] Extracted {len(files)} files into {extract_dir}")
 for p in files[:20]:
