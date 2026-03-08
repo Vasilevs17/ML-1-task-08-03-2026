@@ -11,14 +11,34 @@ fi
 
 mkdir -p downloads data/raw
 
+ensure_gdown() {
+  if python -c 'import gdown' >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "[INFO] gdown не найден, устанавливаю через pip..."
+  if ! python -m pip install --quiet gdown; then
+    echo "[ERROR] Не удалось установить gdown через pip. Убедитесь, что pip доступен в окружении." >&2
+    exit 1
+  fi
+
+  if ! python -c 'import gdown' >/dev/null 2>&1; then
+    echo "[ERROR] gdown установлен некорректно: Python по-прежнему не может импортировать модуль gdown." >&2
+    exit 1
+  fi
+}
+
 # Если данные уже распакованы, повторно не качаем
-if find data/raw -type f | grep -q .; then
-  echo "[INFO] Files already exist in data/raw, skipping download and extraction."
-  find data/raw -maxdepth 2 -type f | head -20
+# .gitkeep не считается реальным файлом данных
+if find data/raw -type f ! -name '.gitkeep' | grep -q .; then
+  echo "[INFO] Real data files already exist in data/raw, skipping download and extraction."
+  find data/raw -maxdepth 2 -type f ! -name '.gitkeep' | head -20
   exit 0
 fi
 
 echo "[INFO] Скачивание архива с данными..."
+
+ensure_gdown
 
 python - <<'PY'
 import os
@@ -32,7 +52,13 @@ out.parent.mkdir(parents=True, exist_ok=True)
 if out.exists():
     out.unlink()
 
-gdown.download(url, str(out), quiet=False, fuzzy=True)
+try:
+    result = gdown.download(url=url, output=str(out), quiet=False, fuzzy=True)
+except Exception as exc:
+    raise SystemExit(f"Download failed: gdown raised an exception: {exc}")
+
+if not result:
+    raise SystemExit("Download failed: gdown did not return output path (possibly invalid URL or access denied)")
 
 if not out.exists():
     raise SystemExit("Download failed: downloads/data.zip was not created")
@@ -63,9 +89,9 @@ if not zipfile.is_zipfile(archive):
 with zipfile.ZipFile(archive, "r") as zf:
     zf.extractall(extract_dir)
 
-files = [p for p in extract_dir.rglob("*") if p.is_file()]
+files = [p for p in extract_dir.rglob("*") if p.is_file() and p.name != ".gitkeep"]
 if not files:
-    raise SystemExit("Extraction failed: no files found in data/raw")
+    raise SystemExit("Extraction failed: no real data files found in data/raw")
 
 print(f"[INFO] Extracted {len(files)} files into {extract_dir}")
 for p in files[:20]:
