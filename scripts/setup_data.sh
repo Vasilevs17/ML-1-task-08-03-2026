@@ -11,6 +11,23 @@ fi
 
 mkdir -p downloads data/raw
 
+ensure_gdown() {
+  if python -c 'import gdown' >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "[INFO] gdown не найден, устанавливаю через pip..."
+  if ! python -m pip install --quiet gdown; then
+    echo "[ERROR] Не удалось установить gdown через pip. Убедитесь, что pip доступен в окружении." >&2
+    exit 1
+  fi
+
+  if ! python -c 'import gdown' >/dev/null 2>&1; then
+    echo "[ERROR] gdown установлен некорректно: Python по-прежнему не может импортировать модуль gdown." >&2
+    exit 1
+  fi
+}
+
 # Если данные уже распакованы, повторно не качаем
 if find data/raw -type f | grep -q .; then
   echo "[INFO] Files already exist in data/raw, skipping download and extraction."
@@ -19,6 +36,8 @@ if find data/raw -type f | grep -q .; then
 fi
 
 echo "[INFO] Скачивание архива с данными..."
+
+ensure_gdown
 
 python - <<'PY'
 import os
@@ -32,7 +51,13 @@ out.parent.mkdir(parents=True, exist_ok=True)
 if out.exists():
     out.unlink()
 
-gdown.download(url, str(out), quiet=False, fuzzy=True)
+try:
+    result = gdown.download(url=url, output=str(out), quiet=False, fuzzy=True)
+except Exception as exc:
+    raise SystemExit(f"Download failed: gdown raised an exception: {exc}")
+
+if not result:
+    raise SystemExit("Download failed: gdown did not return output path (possibly invalid URL or access denied)")
 
 if not out.exists():
     raise SystemExit("Download failed: downloads/data.zip was not created")
