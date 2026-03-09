@@ -62,17 +62,6 @@ ensure_gdown() {
   fi
 }
 
-# 1. Если полный набор parquet уже есть — вообще ничего не качаем
-if dataset_is_complete; then
-  print_existing_dataset
-  exit 0
-fi
-
-print_missing_files
-
-# 2. Если архив уже существует локально, сначала попробуем использовать его
-ARCHIVE_PATH="downloads/data.zip"
-
 archive_is_valid_zip() {
   python - <<'PY'
 from pathlib import Path
@@ -84,10 +73,28 @@ raise SystemExit(1)
 PY
 }
 
+# 1. Если полный набор parquet уже есть — ничего не качаем
+if dataset_is_complete; then
+  print_existing_dataset
+  exit 0
+fi
+
+print_missing_files
+
+# 2. Мягкий режим: разрешаем setup пройти без данных
+if [ "${SKIP_DATA_SETUP:-0}" = "1" ]; then
+  echo "[WARN] SKIP_DATA_SETUP=1 -> skipping dataset download/extraction."
+  echo "[WARN] Code-only tasks may continue, but model training/inference will fail until data is available."
+  exit 0
+fi
+
+ARCHIVE_PATH="downloads/data.zip"
+
+# 3. Если архив уже лежит локально — используем его
 if archive_is_valid_zip; then
   echo "[INFO] Found existing valid archive at ${ARCHIVE_PATH}, will reuse it."
 else
-  # 3. До этого места secret нужен только если архива нет и dataset неполный
+  # 4. Только здесь действительно нужен secret
   if [ -z "${GDRIVE_URL:-}" ]; then
     echo "[ERROR] Secret GDRIVE_URL is not set, and complete dataset is not present locally."
     exit 1
@@ -127,7 +134,7 @@ print(f"[INFO] Archive downloaded: {out} ({size} bytes)")
 PY
 fi
 
-# 4. Распаковка
+# 5. Распаковка
 echo "[INFO] Extracting archive..."
 
 python - <<'PY'
@@ -171,7 +178,6 @@ for f in sorted(expected_files):
     print(f"[INFO] {extract_dir / f}")
 PY
 
-# 5. Финальная проверка через bash
 if dataset_is_complete; then
   echo "[INFO] Setup data completed successfully."
   echo "[INFO] Cleaning temporary archive..."
